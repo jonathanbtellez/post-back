@@ -1,0 +1,83 @@
+services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+    ports:
+      - "8000:80"
+    volumes:
+      - ./api-gateway:/var/www
+    depends_on:
+      - posts-service
+      - comments-service
+    networks:
+      - microservices
+
+  posts-service:
+    build:
+      context: ./posts-service
+    ports:
+      - "8001:80"
+    volumes:
+      - ./posts-service:/var/www
+    depends_on:
+      posts-db:
+        condition: service_healthy
+    networks:
+      - microservices
+
+  comments-service:
+    build:
+      context: ./comments-service
+    ports:
+      - "8002:80"
+    volumes:
+      - ./comments-service:/var/www
+    depends_on:
+      comments-db:
+        condition: service_healthy
+    networks:
+      - microservices
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - microservices
+
+  posts-db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: posts
+    ports:
+      - "3307:3306"
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  comments-db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: comments
+    ports:
+      - "3308:3306"
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  microservices:
+    driver: bridge
